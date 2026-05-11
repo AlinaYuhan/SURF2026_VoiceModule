@@ -21,6 +21,11 @@ def _env_float(name: str, default: float) -> float:
     return float(v) if v is not None else default
 
 
+def _env_int_opt(name: str) -> int | None:
+    v = os.environ.get(name)
+    return int(v) if v is not None else None
+
+
 def _env_list(name: str, default: tuple[str, ...]) -> tuple[str, ...]:
     v = os.environ.get(name)
     if not v:
@@ -35,7 +40,7 @@ class VoiceConfig:
     frame_ms: int               = _env_int("VOICE_FRAME_MS", 20)
     bus_buffer_sec: float       = _env_float("VOICE_BUS_BUFFER_SEC", 1.0)
 
-    mic_device: int | None      = None  # None = system default; set VOICE_MIC_DEVICE to override
+    mic_device: int | None      = _env_int_opt("VOICE_MIC_DEVICE")
 
     wake_words: tuple[str, ...] = _env_list("VOICE_WAKE_WORDS", ("hey jarvis", "alexa"))
     wake_threshold: float       = _env_float("VOICE_WAKE_THRESHOLD", 0.5)
@@ -44,10 +49,15 @@ class VoiceConfig:
     asr_model: str              = _env("VOICE_ASR_MODEL", "paraformer-zh")
     asr_window_sec: float       = _env_float("VOICE_ASR_WINDOW_SEC", 5.0)
 
+    voiceprint_capture_sec: float = _env_float("VOICE_VOICEPRINT_SEC", 2.0)
+    voiceprint_model: str         = _env("VOICE_VOICEPRINT_MODEL",
+                                         "pyannote/wespeaker-voxceleb-resnet34-LM")
+
     ros_audio_topic: str        = _env("VOICE_ROS_AUDIO_TOPIC", "/audio_msg")
     ros_direction_topic: str    = _env("VOICE_ROS_DIRECTION_TOPIC", "/voice_direction")
     ros_wake_topic: str         = _env("VOICE_ROS_WAKE_TOPIC", "/wake_word_event")
     ros_vad_topic: str          = _env("VOICE_ROS_VAD_TOPIC", "/vad_state")
+    ros_speaker_topic: str      = _env("VOICE_ROS_SPEAKER_TOPIC", "/speaker_id")
 
     @property
     def frame_bytes(self) -> int:
