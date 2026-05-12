@@ -10,6 +10,7 @@ build/
 *.mp3
 *.pcm
 runtime/
-models/
-*.onnx
-*.tflite
+models/**/*.onnx
+models/**/*.tflite
+models/**/*.tar.bz2
+

@@ -57,11 +57,12 @@ from ros_nodes.voice_pipeline_node import VoicePipelineNode  # noqa: E402
 
 def _make_node():
     """构建 VoicePipelineNode，mock 掉所有重型组件。"""
-    with patch("ros_nodes.voice_pipeline_node.WakeWordDetector") as MockWWD, \
-         patch("ros_nodes.voice_pipeline_node.ASREngine")         as MockASR, \
-         patch("ros_nodes.voice_pipeline_node.VoiceprintRecognizer") as MockVPR, \
-         patch("ros_nodes.voice_pipeline_node.MicCapture")        as MockMic, \
-         patch("ros_nodes.voice_pipeline_node.WakeupDispatcher")  as MockDisp:
+    with patch("ros_nodes.voice_pipeline_node.WakeWordDetector")        as MockWWD, \
+         patch("ros_nodes.voice_pipeline_node.ChineseWakeWordDetector") as MockCWWD, \
+         patch("ros_nodes.voice_pipeline_node.ASREngine")               as MockASR, \
+         patch("ros_nodes.voice_pipeline_node.VoiceprintRecognizer")    as MockVPR, \
+         patch("ros_nodes.voice_pipeline_node.MicCapture")              as MockMic, \
+         patch("ros_nodes.voice_pipeline_node.WakeupDispatcher")        as MockDisp:
         node = VoicePipelineNode()
     return node
 

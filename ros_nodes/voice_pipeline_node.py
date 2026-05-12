@@ -6,7 +6,7 @@ import time
 
 import numpy as np
 from rclpy.node import Node
-from std_msgs.msg import Bool, Float32, String
+from std_msgs.msg import Bool, String
 
 from asr.asr_engine import ASREngine
 from audio.audio_bus import AudioBus
@@ -14,6 +14,7 @@ from audio.mic_capture import MicCapture
 from config.voice_config import CONFIG
 from vad.vad_engine import VADEngine
 from voice_id.voiceprint_recognizer import VoiceprintRecognizer
+from wake_word.chinese_wake_word_detector import ChineseWakeWordDetector
 from wake_word.wake_word_detector import WakeWordDetector
 from wake_word.wakeup_dispatcher import WakeupDispatcher
 
@@ -40,7 +41,10 @@ class VoicePipelineNode(Node):
         self._vad      = VADEngine()
         self._dispatch = WakeupDispatcher()
         self._dispatch.register(self._on_wake)
-        self._wakeword = WakeWordDetector(on_detected=self._dispatch.on_detection)
+        if CONFIG.wake_word_lang == "zh":
+            self._wakeword = ChineseWakeWordDetector(on_detected=self._dispatch.on_detection)
+        else:
+            self._wakeword = WakeWordDetector(on_detected=self._dispatch.on_detection)
         self._asr      = ASREngine(on_result=self._on_asr)
         self._vprint   = VoiceprintRecognizer(on_embedding=self._on_embedding)
         self._mic      = MicCapture(bus=self._bus)
