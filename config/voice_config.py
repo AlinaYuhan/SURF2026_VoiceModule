@@ -46,6 +46,8 @@ class VoiceConfig:
     wake_threshold: float       = _env_float("VOICE_WAKE_THRESHOLD", 0.5)
     wakeup_dedup_sec: float     = _env_float("VOICE_WAKEUP_DEDUP_SEC", 0.5)
 
+    vad_silence_frames: int     = _env_int("VOICE_VAD_SILENCE_FRAMES", 15)
+
     asr_model: str              = _env("VOICE_ASR_MODEL", "paraformer-zh")
     asr_window_sec: float       = _env_float("VOICE_ASR_WINDOW_SEC", 5.0)
 
