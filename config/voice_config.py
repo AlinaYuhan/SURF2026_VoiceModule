@@ -49,14 +49,17 @@ class VoiceConfig:
                                         str(PROJECT_ROOT / "models" / "kws"))
     wakeup_dedup_sec: float     = _env_float("VOICE_WAKEUP_DEDUP_SEC", 0.5)
 
-    vad_silence_frames: int     = _env_int("VOICE_VAD_SILENCE_FRAMES", 15)
+    vad_silence_frames: int     = _env_int("VOICE_VAD_SILENCE_FRAMES", 30)
 
     asr_model: str              = _env("VOICE_ASR_MODEL", "paraformer-zh")
-    asr_window_sec: float       = _env_float("VOICE_ASR_WINDOW_SEC", 5.0)
+    asr_window_sec: float       = _env_float("VOICE_ASR_WINDOW_SEC", 8.0)
 
-    voiceprint_capture_sec: float = _env_float("VOICE_VOICEPRINT_SEC", 2.0)
-    voiceprint_model: str         = _env("VOICE_VOICEPRINT_MODEL",
-                                         "pyannote/wespeaker-voxceleb-resnet34-LM")
+    voiceprint_capture_sec: float  = _env_float("VOICE_VOICEPRINT_SEC", 3.5)
+    voiceprint_model: str          = _env("VOICE_VOICEPRINT_MODEL",
+                                          "pyannote/wespeaker-voxceleb-resnet34-LM")
+    speaker_sim_threshold: float   = _env_float("VOICE_SPEAKER_SIM_THRESHOLD", 0.50)
+    speaker_max_history: int       = _env_int("VOICE_SPEAKER_MAX_HISTORY", 20)
+    vad_holdoff_sec: float         = _env_float("VOICE_VAD_HOLDOFF_SEC", 1.0)
 
     ros_audio_topic: str        = _env("VOICE_ROS_AUDIO_TOPIC", "/audio_msg")
     ros_direction_topic: str    = _env("VOICE_ROS_DIRECTION_TOPIC", "/voice_direction")

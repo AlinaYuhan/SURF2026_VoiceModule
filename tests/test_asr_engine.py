@@ -23,6 +23,14 @@ def test_start_clears_buffer():
     assert engine._buffer == b""
 
 
+def test_initial_audio_prepended_to_buffer():
+    engine, _, _ = _make_engine()
+    prefill = b"\x01\x02" * 100
+    engine.start_recording(initial_audio=prefill)
+    assert engine._buffer == prefill
+    assert engine._recording is True
+
+
 def test_push_when_recording():
     engine, _, _ = _make_engine()
     engine.start_recording()

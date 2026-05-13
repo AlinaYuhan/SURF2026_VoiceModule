@@ -21,15 +21,15 @@ class ASREngine:
         model_name: str = CONFIG.asr_model,
     ) -> None:
         self._on_result = on_result
-        self._model = AutoModel(model=model_name)
+        self._model = AutoModel(model=model_name, disable_update=True)
         self._lock = threading.Lock()
         self._recording = False
         self._buffer = b""
 
-    def start_recording(self) -> None:
+    def start_recording(self, initial_audio: bytes = b"") -> None:
         with self._lock:
             self._recording = True
-            self._buffer = b""
+            self._buffer = initial_audio
 
     def push_audio(self, pcm: bytes) -> None:
         with self._lock:

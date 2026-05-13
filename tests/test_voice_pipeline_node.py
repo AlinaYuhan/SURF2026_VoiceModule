@@ -86,20 +86,21 @@ def test_on_vad_silence_stops_asr():
 
 def test_on_asr_publishes_json():
     node = _make_node()
+    node._current_speaker = "用户1"
     node._on_asr("你好世界")
     call_args = node._pub_audio.publish.call_args[0][0]
     payload = json.loads(call_args.data)
-    assert payload == {"text": "你好世界"}
+    assert payload == {"text": "你好世界", "speaker": "用户1"}
 
 
-def test_on_embedding_publishes_json():
+def test_on_embedding_identifies_and_publishes_speaker():
     node = _make_node()
-    emb = np.zeros(256, dtype=np.float32)
+    emb = np.ones(256, dtype=np.float32)
     node._on_embedding(emb)
+    assert node._current_speaker == "用户1"
     call_args = node._pub_speaker.publish.call_args[0][0]
     payload = json.loads(call_args.data)
-    assert "embedding" in payload
-    assert len(payload["embedding"]) == 256
+    assert payload == {"speaker": "用户1"}
 
 
 def test_asr_timeout_triggers_stop():
@@ -108,3 +109,17 @@ def test_asr_timeout_triggers_stop():
     node._check_asr_timeout()
     node._asr.stop_and_transcribe.assert_called_once()
     assert node._asr_deadline == 0.0
+
+
+def test_on_vad_silence_suppressed_during_holdoff():
+    node = _make_node()
+    node._on_wake("你好小浦")        # 触发 hold-off
+    node._on_vad(False)              # hold-off 期内，不应触发转写
+    node._asr.stop_and_transcribe.assert_not_called()
+
+
+def test_on_vad_silence_triggers_after_holdoff():
+    node = _make_node()
+    node._vad_holdoff_until = time.monotonic() - 0.1  # hold-off 已过期
+    node._on_vad(False)
+    node._asr.stop_and_transcribe.assert_called_once()

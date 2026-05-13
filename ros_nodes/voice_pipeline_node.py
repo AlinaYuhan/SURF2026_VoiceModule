@@ -13,6 +13,7 @@ from audio.audio_bus import AudioBus
 from audio.mic_capture import MicCapture
 from config.voice_config import CONFIG
 from vad.vad_engine import VADEngine
+from voice_id.speaker_database import SpeakerDatabase
 from voice_id.voiceprint_recognizer import VoiceprintRecognizer
 from wake_word.chinese_wake_word_detector import ChineseWakeWordDetector
 from wake_word.wake_word_detector import WakeWordDetector
@@ -45,9 +46,11 @@ class VoicePipelineNode(Node):
             self._wakeword = ChineseWakeWordDetector(on_detected=self._dispatch.on_detection)
         else:
             self._wakeword = WakeWordDetector(on_detected=self._dispatch.on_detection)
-        self._asr      = ASREngine(on_result=self._on_asr)
-        self._vprint   = VoiceprintRecognizer(on_embedding=self._on_embedding)
-        self._mic      = MicCapture(bus=self._bus)
+        self._asr        = ASREngine(on_result=self._on_asr)
+        self._vprint     = VoiceprintRecognizer(on_embedding=self._on_embedding)
+        self._speaker_db = SpeakerDatabase()
+        self._current_speaker: str = ""
+        self._mic        = MicCapture(bus=self._bus)
 
         self._bus.register(self._vad.process_frame)
         self._bus.register(self._wakeword.push_audio)
@@ -56,6 +59,7 @@ class VoicePipelineNode(Node):
         self._vad.register(self._on_vad)
 
         self._asr_deadline: float = 0.0
+        self._vad_holdoff_until: float = 0.0
         self._timer = self.create_timer(0.5, self._check_asr_timeout)
 
     def start(self) -> None:
@@ -70,21 +74,25 @@ class VoicePipelineNode(Node):
 
     def _on_wake(self, word: str) -> None:
         self._pub_wake.publish(String(data=word))
-        self._asr.start_recording()
-        self._vprint.start_capture()
+        bus_snapshot = self._bus.get_buffer()
+        self._asr.start_recording(initial_audio=b"".join(bus_snapshot[-15:]))
+        self._vprint.start_capture(initial_audio=b"".join(bus_snapshot))
         self._asr_deadline = time.monotonic() + CONFIG.asr_window_sec
+        self._vad_holdoff_until = time.monotonic() + CONFIG.vad_holdoff_sec
 
     def _on_vad(self, is_speech: bool) -> None:
         self._pub_vad.publish(Bool(data=is_speech))
-        if not is_speech:
-            # ASREngine 内部判断 _recording 状态，IDLE 时直接返回
+        if not is_speech and time.monotonic() > self._vad_holdoff_until:
             self._asr.stop_and_transcribe()
 
     def _on_asr(self, text: str) -> None:
-        self._pub_audio.publish(String(data=json.dumps({"text": text})))
+        self._pub_audio.publish(String(data=json.dumps(
+            {"text": text, "speaker": self._current_speaker}
+        )))
 
     def _on_embedding(self, embedding: np.ndarray) -> None:
-        self._pub_speaker.publish(String(data=json.dumps({"embedding": embedding.tolist()})))
+        self._current_speaker = self._speaker_db.identify(embedding)
+        self._pub_speaker.publish(String(data=json.dumps({"speaker": self._current_speaker})))
 
     def _check_asr_timeout(self) -> None:
         if self._asr_deadline and time.monotonic() > self._asr_deadline:

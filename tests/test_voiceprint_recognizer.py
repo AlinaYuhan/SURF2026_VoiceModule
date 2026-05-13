@@ -50,6 +50,26 @@ def test_short_audio_does_not_trigger():
     mock_inf.assert_not_called()
 
 
+def test_initial_audio_counts_toward_capture():
+    import time
+    callback = MagicMock()
+    rec, mock_inf, _ = _make_recognizer(on_embedding=callback, capture_sec=0.1)
+    mock_inf.return_value = np.zeros(256, dtype=np.float32)
+    # 预填 0.08s（不足 capture_sec），再 push 0.05s → 合计超过 0.1s，应触发
+    rec.start_capture(initial_audio=_make_pcm(0.08))
+    rec.push_audio(_make_pcm(0.05))
+    time.sleep(0.3)
+    callback.assert_called_once()
+
+
+def test_start_capture_default_still_resets_buffer():
+    rec, _, _ = _make_recognizer()
+    rec._buffer = b"\xff" * 100
+    rec.start_capture()          # 无参数，等同原来行为
+    assert rec._buffer == b""
+    assert rec._capturing is True
+
+
 def test_callback_called_after_capture_sec():
     import time
     callback = MagicMock()

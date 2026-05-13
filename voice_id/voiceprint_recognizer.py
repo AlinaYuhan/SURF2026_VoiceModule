@@ -21,9 +21,9 @@ class VoiceprintRecognizer:
       2. push_audio() 持续积累 PCM，满 capture_sec 秒后停止录制
       3. 后台线程提取 256 维 embedding，通过 on_embedding 回调输出
 
-    使用固定时长（默认 2 秒）而不是完整录音，原因：
+    使用固定时长（默认 3.5 秒）而不是完整录音，原因：
     - 完整录音时长不可控，会导致提取延迟波动
-    - 2 秒足够模型稳定提取特征
+    - 3.5 秒 = ~1s 唤醒词回填 + ~2.5s 指令，足够模型稳定提取特征
     - 避免录入多人混音影响准确率
     """
 
@@ -46,9 +46,9 @@ class VoiceprintRecognizer:
         self._capturing = False
         self._lock = threading.Lock()
 
-    def start_capture(self) -> None:
+    def start_capture(self, initial_audio: bytes = b"") -> None:
         with self._lock:
-            self._buffer = b""
+            self._buffer = initial_audio
             self._capturing = True
 
     def push_audio(self, pcm: bytes) -> None:
