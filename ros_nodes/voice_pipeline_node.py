@@ -101,10 +101,24 @@ class VoicePipelineNode(Node):
 
 
 def main() -> None:
+    import os
+    import socket
+    socket.setdefaulttimeout(8)
+    os.environ.setdefault("HF_HUB_OFFLINE", "1")
+
+    # Pre-warm all network-checked models before rclpy.init() to avoid CycloneDDS
+    # interfering with ModelScope/HuggingFace Hub checks on first load.
+    from config.voice_config import CONFIG as _cfg
+    from funasr import AutoModel as _AM
+    _AM(model=_cfg.asr_model, disable_update=True)
+    from pyannote.audio import Model as _PModel
+    _PModel.from_pretrained(_cfg.voiceprint_model)
+
     import rclpy
     rclpy.init()
     node = VoicePipelineNode()
     node.start()
+    print("[voice_pipeline] node ready, listening...", flush=True)
     try:
         rclpy.spin(node)
     except KeyboardInterrupt:
@@ -113,3 +127,6 @@ def main() -> None:
         node.stop()
         node.destroy_node()
         rclpy.shutdown()
+
+if __name__ == '__main__':
+    main()
