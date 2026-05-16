@@ -50,7 +50,11 @@ class VoicePipelineNode(Node):
         self._vprint     = VoiceprintRecognizer(on_embedding=self._on_embedding)
         self._speaker_db = SpeakerDatabase()
         self._current_speaker: str = ""
-        self._mic        = MicCapture(bus=self._bus)
+        if CONFIG.audio_source == "robot":
+            from audio.robot_mic_capture import RobotMicCapture
+            self._mic = RobotMicCapture(bus=self._bus)
+        else:
+            self._mic = MicCapture(bus=self._bus)
 
         self._bus.register(self._vad.process_frame)
         self._bus.register(self._wakeword.push_audio)

@@ -42,6 +42,11 @@ class VoiceConfig:
 
     mic_device: int | None      = _env_int_opt("VOICE_MIC_DEVICE")
 
+    audio_source: str           = _env("VOICE_AUDIO_SOURCE", "local")
+    robot_mic_group: str        = _env("VOICE_ROBOT_MIC_GROUP", "239.168.123.161")
+    robot_mic_port: int         = _env_int("VOICE_ROBOT_MIC_PORT", 5555)
+    robot_mic_interface: str    = _env("VOICE_ROBOT_MIC_IF", "192.168.123.225")
+
     wake_words: tuple[str, ...] = _env_list("VOICE_WAKE_WORDS", ("hey jarvis", "alexa"))
     wake_threshold: float       = _env_float("VOICE_WAKE_THRESHOLD", 0.5)
     wake_word_lang: str         = _env("VOICE_WAKE_WORD_LANG", "zh")

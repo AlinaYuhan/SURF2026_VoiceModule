@@ -13,6 +13,7 @@ export HF_HUB_OFFLINE=1
 export ROS_DOMAIN_ID=42
 export PYTHONPATH="$SCRIPT_DIR:/opt/ros/jazzy/lib/python3.12/site-packages"
 export CYCLONEDDS_URI='<CycloneDDS><Domain><General><AllowMulticast>false</AllowMulticast></General><Discovery><Peers><Peer address="192.168.123.164"/></Peers></Discovery></Domain></CycloneDDS>'
+export VOICE_AUDIO_SOURCE=robot
 
 cd "$SCRIPT_DIR"
 python ros_nodes/voice_pipeline_node.py
