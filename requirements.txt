@@ -1,8 +1,33 @@
+# SURF2026 Voice Module — Python dependencies
+#
+# Voice module core
 openwakeword
 webrtcvad-wheels
-pyaudio
 sounddevice
 soundfile
 pyroomacoustics
+noisereduce
 numpy
 scipy
+
+# Speech recognition (ASR)
+funasr
+
+# Speaker verification (voiceprint)
+pyannote.audio
+torch
+
+# Wake word detection (Chinese)
+sherpa-onnx
+
+# ROS2 Python client (or install via apt: ros-jazzy-ros-base)
+# rclpy and std_msgs are installed with ROS2, not via pip
+# If running outside ROS2 environment, skip these:
+# rclpy
+# std_msgs
+
+# XJTLU RAG system (FastAPI)
+fastapi
+uvicorn[standard]
+httpx
+pydantic
