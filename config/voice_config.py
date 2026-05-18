@@ -51,7 +51,7 @@ class VoiceConfig:
     wake_threshold: float       = _env_float("VOICE_WAKE_THRESHOLD", 0.5)
     wake_word_lang: str         = _env("VOICE_WAKE_WORD_LANG", "zh")
     kws_model_dir: str          = _env("VOICE_KWS_MODEL_DIR",
-                                        str(PROJECT_ROOT / "models" / "kws"))
+                                        str(PROJECT_ROOT / "models" / "kws" / "sherpa-onnx-kws-zipformer-zh-en-3M-2025-12-20"))
     wakeup_dedup_sec: float     = _env_float("VOICE_WAKEUP_DEDUP_SEC", 0.5)
 
     vad_silence_frames: int     = _env_int("VOICE_VAD_SILENCE_FRAMES", 30)

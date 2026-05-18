@@ -13,8 +13,10 @@ runtime/
 models/**/*.onnx
 models/**/*.tflite
 models/**/*.tar.bz2
-models/kws/configuration.json
-models/kws/keywords_raw.txt
-models/kws/README.md
-models/kws/test_wavs/
+models/**/*.phone
+models/**/tokens.txt
+models/**/configuration.json
+models/**/keywords_raw.txt
+models/**/README.md
+models/**/test_wavs/
 
