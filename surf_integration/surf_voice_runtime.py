@@ -16,6 +16,7 @@ from vad.vad_engine import VADEngine
 from voice_id.speaker_database import SpeakerDatabase
 from voice_id.voiceprint_recognizer import VoiceprintRecognizer
 from wake_word.chinese_wake_word_detector import ChineseWakeWordDetector
+from wake_word.wake_acknowledger import WakeAcknowledger
 from wake_word.wake_word_detector import WakeWordDetector
 from wake_word.wakeup_dispatcher import WakeupDispatcher
 
@@ -57,6 +58,7 @@ class SurfVoiceRuntime:
         self._asr = ASREngine(on_result=self._on_asr)
         self._vprint = VoiceprintRecognizer(on_embedding=self._on_embedding)
         self._speaker_db = SpeakerDatabase()
+        self._ack = WakeAcknowledger()
         self._current_speaker = ""
 
         if CONFIG.audio_source == "robot":
@@ -92,6 +94,7 @@ class SurfVoiceRuntime:
             time.sleep(0.1)
 
     def _on_wake(self, word: str) -> None:
+        self._ack.ack(word)
         logger.info("wake: %s", word)
         self._sink.publish("/wake_word_event", "string", word)
         bus_snapshot = self._bus.get_buffer()

@@ -1,28 +1,24 @@
 """TTS relay service — run on Jetson (192.168.123.164).
 
 Listens on TCP :9999. Each connection sends UTF-8 text; the server
-queues it and calls AudioClient.TtsMaker() serially so the robot
-never tries to speak two sentences at once.
+maps it to a pre-generated WAV file and plays via AudioClient.PlayStream().
+
+Supported phrases:
+  "我在"     → assets/wake_ack_zh.wav
+  "I'm here" → assets/wake_ack_en.wav
 
 Send a line of text:
-    echo "你好" | nc 192.168.123.164 9999
-
-Python caller:
-    import socket
-    with socket.create_connection(("192.168.123.164", 9999), timeout=5) as s:
-        s.sendall("你好".encode())
-        s.shutdown(socket.SHUT_WR)
-        s.recv(16)  # b"OK\n"
+    echo "我在" | nc 192.168.123.164 9999
 """
 import os
+import pathlib
 import queue
 import socket
 import sys
 import threading
 import time
+import wave
 
-# Must be set before importing the SDK — configures CycloneDDS to use
-# unicast on eth0 so it can reach the embedded audio service at .161.
 os.environ["CYCLONEDDS_URI"] = (
     "<CycloneDDS><Domain><General>"
     "<AllowMulticast>false</AllowMulticast>"
@@ -42,20 +38,64 @@ from unitree_sdk2py.g1.audio.g1_audio_client import AudioClient
 
 HOST = "0.0.0.0"
 PORT = 9999
+ASSETS_DIR = pathlib.Path(__file__).parent / "assets"
+CHUNK_BYTES = 96000  # 3 s @ 16kHz mono 16-bit
+
+AUDIO_MAP = {
+    "我在": "wake_ack_zh.wav",
+    "I'm here": "wake_ack_en.wav",
+}
 
 _tts_queue: "queue.Queue[str]" = queue.Queue()
+
+
+def _read_pcm(path: pathlib.Path) -> bytes:
+    with wave.open(str(path), "rb") as wf:
+        print(
+            f"[relay] WAV: {wf.getnchannels()}ch {wf.getframerate()}Hz "
+            f"{wf.getsampwidth()*8}bit",
+            flush=True,
+        )
+        return wf.readframes(wf.getnframes())
+
+
+def _play(client: AudioClient, pcm: bytes) -> None:
+    stream_id = str(int(time.time() * 1000))
+    offset = 0
+    idx = 0
+    while offset < len(pcm):
+        chunk = pcm[offset : offset + CHUNK_BYTES]
+        ret, _ = client.PlayStream("tts", stream_id, chunk)
+        if ret != 0:
+            print(f"[relay] PlayStream chunk {idx} error: {ret}", flush=True)
+            break
+        print(f"[relay] chunk {idx} sent ({len(chunk)} bytes)", flush=True)
+        offset += CHUNK_BYTES
+        idx += 1
+        if offset < len(pcm):
+            time.sleep(1.0)
 
 
 def _tts_worker(client: AudioClient) -> None:
     while True:
         text = _tts_queue.get()
-        print(f"[TTS] {text!r}", flush=True)
-        ret = client.TtsMaker(text, 0)
-        if ret != 0:
-            print(f"[TTS] 警告：TtsMaker 返回 {ret}", flush=True)
+        wav_name = AUDIO_MAP.get(text)
+        if wav_name is None:
+            print(f"[relay] 未知文本: {text!r}", flush=True)
+            continue
+        wav_path = ASSETS_DIR / wav_name
+        if not wav_path.exists():
+            print(f"[relay] 文件不存在: {wav_path}", flush=True)
+            continue
+        print(f"[relay] → {wav_name}", flush=True)
+        try:
+            pcm = _read_pcm(wav_path)
+            _play(client, pcm)
+        except Exception as e:
+            print(f"[relay] 播放失败: {e}", flush=True)
 
 
-def _handle_conn(conn: socket.socket, addr) -> None:
+def _handle_conn(conn: socket.socket, _addr) -> None:
     with conn:
         chunks = []
         while True:

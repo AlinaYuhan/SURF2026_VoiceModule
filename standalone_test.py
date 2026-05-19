@@ -28,6 +28,7 @@ from vad.vad_engine import VADEngine
 from voice_id.speaker_database import SpeakerDatabase
 from voice_id.voiceprint_recognizer import VoiceprintRecognizer
 from wake_word.chinese_wake_word_detector import ChineseWakeWordDetector
+from wake_word.wake_acknowledger import WakeAcknowledger
 from wake_word.wakeup_dispatcher import WakeupDispatcher
 
 
@@ -46,6 +47,7 @@ _speaker_db = SpeakerDatabase()
 
 def on_wake(word: str) -> None:
     global _recording, _asr_deadline, _vad_holdoff_until, _session_counter, _current_asr_session
+    ack.ack(word)
     _recording = True
     _asr_deadline = time.monotonic() + CONFIG.asr_window_sec
     _vad_holdoff_until = time.monotonic() + CONFIG.vad_holdoff_sec
@@ -87,9 +89,14 @@ bus    = AudioBus()
 vad    = VADEngine()
 disp   = WakeupDispatcher()
 kws    = ChineseWakeWordDetector(on_detected=disp.on_detection)
+ack    = WakeAcknowledger()
 asr    = ASREngine(on_result=on_asr)
 vprint = VoiceprintRecognizer(on_embedding=on_embedding)
-mic    = MicCapture(bus=bus)
+if CONFIG.audio_source == "robot":
+    from audio.robot_mic_capture import RobotMicCapture
+    mic = RobotMicCapture(bus=bus)
+else:
+    mic    = MicCapture(bus=bus)
 
 disp.register(on_wake)
 bus.register(vad.process_frame)
