@@ -36,7 +36,7 @@ class SpeakerDatabase:
         self._next_id = 1
         self._lock = threading.Lock()
 
-    def identify(self, embedding: np.ndarray) -> str:
+    def identify(self, embedding: np.ndarray) -> tuple[str, float]:
         with self._lock:
             if self._entries:
                 sims = [_cosine(embedding, e) for _, e in self._entries]
@@ -44,13 +44,13 @@ class SpeakerDatabase:
                 if sims[best] >= self._threshold:
                     label = self._entries[best][0]
                     self._entries[best] = (label, embedding)
-                    return label
+                    return label, round(sims[best], 4)
             label = f"用户{self._next_id}"
             self._next_id += 1
             if len(self._entries) >= self._max_entries:
                 self._entries.pop(0)
             self._entries.append((label, embedding))
-            return label
+            return label, 0.0
 
     @property
     def known_speakers(self) -> list[str]:
