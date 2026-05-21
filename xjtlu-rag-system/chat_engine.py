@@ -1,6 +1,7 @@
 import json
 import os
 import re
+import time
 
 import sqlite3
 
@@ -342,9 +343,15 @@ async def chat(session_id: str, message: str) -> dict:
     history = recent_messages(settings.memory_db, session_id, limit=8)
 
     results: list[SearchResult] = []
+    _rag_embed_sec = 0.0
+    _rag_search_sec = 0.0
     if _needs_rag(message):
+        _t = time.monotonic()
         query_embedding = await embed_text(message)
+        _rag_embed_sec = round(time.monotonic() - _t, 3)
+        _t = time.monotonic()
         results = search(settings.rag_db, query_embedding, settings.top_k, settings.similarity_threshold)
+        _rag_search_sec = round(time.monotonic() - _t, 3)
 
     direct_faq_context = _build_direct_faq_context(message, settings.source_db)
     programme_context = _build_programme_context(message, settings.source_db)
@@ -385,7 +392,9 @@ async def chat(session_id: str, message: str) -> dict:
 请给出100字以内的最终回复。
 """.strip()
 
+    _t = time.monotonic()
     answer = _limit_answer(await generate_text(prompt, system))
+    _llm_sec = round(time.monotonic() - _t, 3)
     add_message(settings.memory_db, session_id, "assistant", answer)
 
     return {
@@ -401,4 +410,10 @@ async def chat(session_id: str, message: str) -> dict:
             }
             for item in results
         ],
+        "timing": {
+            "rag_embed_sec": _rag_embed_sec,
+            "rag_search_sec": _rag_search_sec,
+            "llm_sec": _llm_sec,
+            "total_sec": round(_rag_embed_sec + _rag_search_sec + _llm_sec, 3),
+        },
     }

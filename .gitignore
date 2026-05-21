@@ -11,6 +11,9 @@ build/
 *.mp3
 *.pcm
 runtime/
+logs/
+docs/
+xjtlu-rag-system/chat_memory.db
 models/**/*.onnx
 models/**/*.tflite
 models/**/*.tar.bz2

@@ -12,6 +12,7 @@ from __future__ import annotations
 import os
 import pathlib
 import queue
+import sys
 import time
 
 import numpy as np
@@ -19,6 +20,10 @@ import numpy as np
 # WSL2：让 sounddevice 通过 WSLg PulseAudio 访问 Windows 麦克风
 if not os.environ.get("PULSE_SERVER"):
     os.environ["PULSE_SERVER"] = "unix:/mnt/wslg/PulseServer"
+
+# 延长 VAD holdoff，确保"我在"播完后用户仍有时间说指令（可用 VOICE_VAD_HOLDOFF_SEC 覆盖）
+if not os.environ.get("VOICE_VAD_HOLDOFF_SEC"):
+    os.environ["VOICE_VAD_HOLDOFF_SEC"] = "4.0"
 
 from asr.asr_engine import ASREngine
 from audio.audio_bus import AudioBus
@@ -31,6 +36,11 @@ from wake_word.chinese_wake_word_detector import ChineseWakeWordDetector
 from wake_word.wake_acknowledger import WakeAcknowledger
 from wake_word.wakeup_dispatcher import WakeupDispatcher
 
+sys.path.insert(0, str(pathlib.Path(__file__).parent))
+from pipeline_log.pipeline_logger import PipelineLogger
+
+_pipeline_log = PipelineLogger()
+
 
 # ── 状态 ──────────────────────────────────────────────────────────────────────
 
@@ -41,13 +51,19 @@ _session_counter: int = 0
 _current_asr_session: int = 0
 _session_queue: queue.Queue[int] = queue.Queue()
 _speaker_db = SpeakerDatabase()
+_asr_audio_frames: list[bytes] = []
+_asr_t0: float = 0.0
 
 
 # ── 回调 ──────────────────────────────────────────────────────────────────────
 
 def on_wake(word: str) -> None:
-    global _recording, _asr_deadline, _vad_holdoff_until, _session_counter, _current_asr_session
+    global _recording, _asr_deadline, _vad_holdoff_until, _session_counter, _current_asr_session, _asr_t0
     ack.ack(word)
+
+    _session_log = _pipeline_log.start_session(word)
+    _session_log.record("ack_sent")
+
     _recording = True
     _asr_deadline = time.monotonic() + CONFIG.asr_window_sec
     _vad_holdoff_until = time.monotonic() + CONFIG.vad_holdoff_sec
@@ -56,8 +72,15 @@ def on_wake(word: str) -> None:
     _session_queue.put(_session_counter)
     print(f"\n[唤醒 #{_session_counter}] 检测到: {word!r}  →  开始录音（最长 {CONFIG.asr_window_sec}s）")
     bus_snapshot = bus.get_buffer()
+
+    _asr_audio_frames.clear()
+    _asr_audio_frames.extend(bus_snapshot[-15:])
+
     asr.start_recording(initial_audio=b"".join(bus_snapshot[-15:]))
     vprint.start_capture(initial_audio=b"".join(bus_snapshot))
+
+    _session_log.record("asr_started")
+    _asr_t0 = time.monotonic()
 
 
 def on_vad(is_speech: bool) -> None:
@@ -67,11 +90,21 @@ def on_vad(is_speech: bool) -> None:
     if not is_speech and _recording and time.monotonic() > _vad_holdoff_until:
         _recording = False
         print()
+        if _pipeline_log.current and _asr_audio_frames:
+            _pipeline_log.current.save_audio(_asr_audio_frames)
         asr.stop_and_transcribe()
 
 
 def on_asr(text: str) -> None:
     print(f"[ASR #{_current_asr_session}]  {text}")
+    if _pipeline_log.current:
+        _pipeline_log.current.record_duration(
+            "asr_result",
+            start=_asr_t0,
+            text=text,
+            session=_current_asr_session,
+        )
+        _pipeline_log.end_session()
 
 
 def on_embedding(embedding: np.ndarray) -> None:
@@ -105,6 +138,13 @@ bus.register(asr.push_audio)
 bus.register(vprint.push_audio)
 vad.register(on_vad)
 
+
+def _collect_audio(pcm: bytes) -> None:
+    if _recording:
+        _asr_audio_frames.append(pcm)
+
+bus.register(_collect_audio)
+
 # ── 启动 ──────────────────────────────────────────────────────────────────────
 
 kws.start()
@@ -127,6 +167,8 @@ try:
             _recording = False
             _asr_deadline = 0.0
             print("\n[超时] ASR 窗口到期，强制转写")
+            if _pipeline_log.current and _asr_audio_frames:
+                _pipeline_log.current.save_audio(_asr_audio_frames)
             asr.stop_and_transcribe()
         time.sleep(0.1)
 except KeyboardInterrupt:
