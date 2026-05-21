@@ -25,6 +25,10 @@ if not os.environ.get("PULSE_SERVER"):
 if not os.environ.get("VOICE_VAD_HOLDOFF_SEC"):
     os.environ["VOICE_VAD_HOLDOFF_SEC"] = "4.0"
 
+# 连续静音 1.5s 才判定说话结束（75帧×20ms），避免喘气或短暂停顿被误截断（可用 VOICE_VAD_SILENCE_FRAMES 覆盖）
+if not os.environ.get("VOICE_VAD_SILENCE_FRAMES"):
+    os.environ["VOICE_VAD_SILENCE_FRAMES"] = "75"
+
 from asr.asr_engine import ASREngine
 from audio.audio_bus import AudioBus
 from audio.mic_capture import MicCapture
