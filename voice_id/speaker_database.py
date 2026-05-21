@@ -36,7 +36,7 @@ class SpeakerDatabase:
         self._next_id = 1
         self._lock = threading.Lock()
 
-    def identify(self, embedding: np.ndarray) -> tuple[str, float]:
+    def identify_with_score(self, embedding: np.ndarray) -> tuple[str, float]:
         with self._lock:
             if self._entries:
                 sims = [_cosine(embedding, e) for _, e in self._entries]
@@ -51,6 +51,10 @@ class SpeakerDatabase:
                 self._entries.pop(0)
             self._entries.append((label, embedding))
             return label, 0.0
+
+    def identify(self, embedding: np.ndarray) -> str:
+        label, _ = self.identify_with_score(embedding)
+        return label
 
     @property
     def known_speakers(self) -> list[str]:

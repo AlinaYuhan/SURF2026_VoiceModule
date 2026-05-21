@@ -136,7 +136,7 @@ def on_asr(text: str) -> None:
 
 def on_embedding(embedding: np.ndarray) -> None:
     sid = _session_queue.get_nowait() if not _session_queue.empty() else "?"
-    label, score = _speaker_db.identify(embedding)
+    label, score = _speaker_db.identify_with_score(embedding)
     known = " / ".join(f"「{s}」" for s in _speaker_db.known_speakers)
     print(f"[声纹 #{sid}] {label}（相似度 {score:.3f}，已知说话人：{known}）")
     if _pipeline_log.current:

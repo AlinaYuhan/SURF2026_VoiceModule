@@ -1,0 +1,12 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+runtime/*
+!runtime/.gitkeep
+
+logs/
+xjtlu-rag-system/chat_memory.db
+xjtlu-rag-system/__pycache__/
+
+*.log

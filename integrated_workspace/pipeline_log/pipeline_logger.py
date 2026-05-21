@@ -44,7 +44,7 @@ class SessionLog:
             **kwargs,
         }
         self._append(entry)
-        logger.debug("[%s] %s +%.3fs", self.session_id, stage, elapsed)
+        logger.info("[%s] %s +%.3fs", self.session_id, stage, elapsed)
         return elapsed
 
     def record_duration(self, stage: str, start: float, **kwargs: Any) -> float:
