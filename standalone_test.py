@@ -84,9 +84,11 @@ def on_wake(word: str) -> None:
 
 
 def on_vad(is_speech: bool) -> None:
-    global _recording
+    global _recording, _asr_deadline
     state = "说话中..." if is_speech else "静音"
     print(f"[VAD]  {state}", end="\r")
+    if is_speech and _recording:
+        _asr_deadline = 0.0  # 用户已开口，取消硬截断，交由 VAD 自然结束
     if not is_speech and _recording and time.monotonic() > _vad_holdoff_until:
         _recording = False
         print()
