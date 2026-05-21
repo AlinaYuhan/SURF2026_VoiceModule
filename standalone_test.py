@@ -112,6 +112,8 @@ def on_embedding(embedding: np.ndarray) -> None:
     label = _speaker_db.identify(embedding)
     known = " / ".join(f"「{s}」" for s in _speaker_db.known_speakers)
     print(f"[声纹 #{sid}] {label}（已知说话人：{known}）")
+    if _pipeline_log.current:
+        _pipeline_log.current.record("speaker_id", label=label, session=sid)
 
 
 # ── 组件初始化 ────────────────────────────────────────────────────────────────
