@@ -13,9 +13,14 @@ import os
 import pathlib
 import queue
 import sys
+import threading
 import time
 
+import httpx
 import numpy as np
+
+_RAG_URL = "http://127.0.0.1:8000/chat"
+_RAG_SESSION = "voice-pipeline"
 
 # WSL2：让 sounddevice 通过 WSLg PulseAudio 访问 Windows 麦克风
 if not os.environ.get("PULSE_SERVER"):
@@ -25,7 +30,7 @@ if not os.environ.get("PULSE_SERVER"):
 if not os.environ.get("VOICE_VAD_HOLDOFF_SEC"):
     os.environ["VOICE_VAD_HOLDOFF_SEC"] = "4.0"
 
-# 连续静音 1.5s 才判定说话结束（75帧×20ms），避免喘气或短暂停顿被误截断（可用 VOICE_VAD_SILENCE_FRAMES 覆盖）
+# 连续静音 1.5s 才判定说话结束（75 帧×20ms），避免喘气被误截断（可用 VOICE_VAD_SILENCE_FRAMES 覆盖）
 if not os.environ.get("VOICE_VAD_SILENCE_FRAMES"):
     os.environ["VOICE_VAD_SILENCE_FRAMES"] = "75"
 
@@ -44,7 +49,6 @@ sys.path.insert(0, str(pathlib.Path(__file__).parent))
 from pipeline_log.pipeline_logger import PipelineLogger
 
 _pipeline_log = PipelineLogger()
-
 
 # ── 状态 ──────────────────────────────────────────────────────────────────────
 
@@ -93,12 +97,28 @@ def on_vad(is_speech: bool) -> None:
     print(f"[VAD]  {state}", end="\r")
     if is_speech and _recording:
         _asr_deadline = 0.0  # 用户已开口，取消硬截断，交由 VAD 自然结束
-    if not is_speech and _recording and time.monotonic() > _vad_holdoff_until:
-        _recording = False
-        print()
-        if _pipeline_log.current and _asr_audio_frames:
-            _pipeline_log.current.save_audio(_asr_audio_frames)
-        asr.stop_and_transcribe()
+    if not is_speech and _recording:
+        if time.monotonic() > _vad_holdoff_until:
+            _recording = False
+            if _pipeline_log.current and _asr_audio_frames:
+                _pipeline_log.current.save_audio(_asr_audio_frames)
+            asr.stop_and_transcribe()
+
+
+def _call_rag(text: str) -> None:
+    def _run() -> None:
+        try:
+            with httpx.Client(timeout=30) as client:
+                resp = client.post(_RAG_URL, json={"session_id": _RAG_SESSION, "message": text})
+                resp.raise_for_status()
+                data = resp.json()
+            answer = data.get("answer", "")
+            timing = data.get("timing", {})
+            print(f"[RAG]  {answer}")
+            print(f"[RAG 耗时]  embed={timing.get('rag_embed_sec','?')}s  search={timing.get('rag_search_sec','?')}s  llm={timing.get('llm_sec','?')}s")
+        except Exception as exc:
+            print(f"[RAG 错误]  {exc}")
+    threading.Thread(target=_run, daemon=True).start()
 
 
 def on_asr(text: str) -> None:
@@ -111,6 +131,7 @@ def on_asr(text: str) -> None:
             session=_current_asr_session,
         )
         _pipeline_log.end_session()
+    _call_rag(text)
 
 
 def on_embedding(embedding: np.ndarray) -> None:

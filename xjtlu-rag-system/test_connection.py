@@ -19,19 +19,25 @@ async def test_connection():
     
     # 测试 1: Embedding API
     print("[测试 1] 连接 Embedding 服务...")
-    print(f"  URL: {settings.openai_base_url}/embeddings")
+    if settings.embed_provider == "ollama":
+        embed_url = f"{settings.ollama_base_url}/api/embeddings"
+        embed_payload = {"model": settings.embed_model, "prompt": "这是一条测试文本"}
+        embed_headers = {}
+        embed_key = "embedding"
+    else:
+        embed_url = f"{settings.openai_base_url}/embeddings"
+        embed_payload = {"model": settings.embed_model, "input": "这是一条测试文本"}
+        embed_headers = {"Authorization": f"Bearer {settings.openai_api_key}"}
+        embed_key = None
+    print(f"  Provider: {settings.embed_provider}  URL: {embed_url}")
     print(f"  模型: {settings.embed_model}")
     try:
         async with httpx.AsyncClient(timeout=60) as client:
-            response = await client.post(
-                f"{settings.openai_base_url}/embeddings",
-                json={"model": settings.embed_model, "input": "这是一条测试文本"},
-                headers={"Authorization": f"Bearer {settings.openai_api_key}"}
-            )
+            response = await client.post(embed_url, json=embed_payload, headers=embed_headers)
             if response.status_code == 200:
                 data = response.json()
-                embed_dim = len(data["data"][0]["embedding"])
-                print(f"  ✓ 连接成功! 向量维度: {embed_dim}")
+                vec = data[embed_key] if embed_key else data["data"][0]["embedding"]
+                print(f"  ✓ 连接成功! 向量维度: {len(vec)}")
             else:
                 errors.append(f"Embedding API 返回状态码: {response.status_code}")
                 print(f"  ✗ 失败: {response.status_code} - {response.text}")
