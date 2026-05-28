@@ -57,6 +57,8 @@ class VoiceConfig:
     vad_silence_frames: int     = _env_int("VOICE_VAD_SILENCE_FRAMES", 30)
 
     asr_model: str              = _env("VOICE_ASR_MODEL", "paraformer-zh")
+    asr_vad_model: str          = _env("VOICE_ASR_VAD_MODEL", "")
+    asr_vad_max_single_segment_time: int = _env_int("VOICE_ASR_VAD_MAX_SEGMENT_MS", 30000)
     asr_window_sec: float       = _env_float("VOICE_ASR_WINDOW_SEC", 8.0)
 
     voiceprint_capture_sec: float  = _env_float("VOICE_VOICEPRINT_SEC", 3.5)

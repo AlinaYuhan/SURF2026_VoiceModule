@@ -16,8 +16,38 @@ import sys
 import threading
 import time
 
+import asyncio
+import subprocess
+import tempfile
+
+import edge_tts
 import httpx
 import numpy as np
+
+_TTS_VOICE = "zh-CN-XiaoxiaoNeural"
+
+
+def _speak(text: str) -> None:
+    def _run() -> None:
+        tmp = tempfile.NamedTemporaryFile(suffix=".mp3", delete=False)
+        mp3_path = tmp.name
+        tmp.close()
+        try:
+            asyncio.run(edge_tts.Communicate(text, _TTS_VOICE).save(mp3_path))
+            env = os.environ.copy()
+            env.setdefault("PULSE_SERVER", "unix:/mnt/wslg/PulseServer")
+            subprocess.run(
+                ["ffplay", "-nodisp", "-autoexit", "-loglevel", "quiet", mp3_path],
+                env=env,
+            )
+        except Exception as exc:
+            print(f"[TTS 错误]  {exc}")
+        finally:
+            try:
+                os.unlink(mp3_path)
+            except OSError:
+                pass
+    threading.Thread(target=_run, daemon=True).start()
 
 _RAG_URL = "http://127.0.0.1:8000/chat"
 _RAG_SESSION = "voice-pipeline"
@@ -116,6 +146,8 @@ def _call_rag(text: str) -> None:
             timing = data.get("timing", {})
             print(f"[RAG]  {answer}")
             print(f"[RAG 耗时]  embed={timing.get('rag_embed_sec','?')}s  search={timing.get('rag_search_sec','?')}s  llm={timing.get('llm_sec','?')}s")
+            if answer:
+                _speak(answer)
         except Exception as exc:
             print(f"[RAG 错误]  {exc}")
     threading.Thread(target=_run, daemon=True).start()
