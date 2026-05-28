@@ -2,6 +2,14 @@ __pycache__/
 *.pyc
 *.pyo
 .env
+edge-headless-profile/
+compact_full_layout_mask.svg
+generate_compact_full_layout_mask.cjs
+/chat_memory.db
+/rag_index.db
+/xjtlu_knowledge.db
+/chat_memory.db.readonly-backup-*
+/uvicorn.*.log
 *.egg-info/
 dist/
 build/
@@ -23,4 +31,3 @@ models/**/configuration.json
 models/**/keywords_raw.txt
 models/**/README.md
 models/**/test_wavs/
-

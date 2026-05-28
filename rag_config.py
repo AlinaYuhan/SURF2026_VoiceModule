@@ -11,7 +11,7 @@ def _load_dotenv(path: str = ".env") -> None:
             if not stripped or stripped.startswith("#") or "=" not in stripped:
                 continue
             key, value = stripped.split("=", 1)
-            os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
+            os.environ[key.strip()] = value.strip().strip('"').strip("'")
 
 
 _load_dotenv()
@@ -35,6 +35,7 @@ class Settings:
     chat_model: str = _env("CHAT_MODEL", "qwen2.5:7b-instruct")
     top_k: int = int(_env("TOP_K", "10"))
     similarity_threshold: float = float(_env("SIMILARITY_THRESHOLD", "0.35"))
+    thinking: bool = _env("THINKING", "false").lower() in ("true", "1", "yes")
 
 
 settings = Settings()

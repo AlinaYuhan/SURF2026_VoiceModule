@@ -47,7 +47,7 @@ async def _ollama_generate(prompt: str, system: str | None = None) -> str:
 
 
 async def _openai_generate(prompt: str, system: str | None = None) -> str:
-    payload = {
+    payload: dict = {
         "model": settings.chat_model,
         "messages": [
             {"role": "system", "content": system or ""},
@@ -57,6 +57,8 @@ async def _openai_generate(prompt: str, system: str | None = None) -> str:
         "top_p": 0.9,
         "stream": False,
     }
+    if not settings.thinking:
+        payload["thinking"] = {"type": "disabled"}
     headers = {"Authorization": f"Bearer {settings.openai_api_key}"}
     async with httpx.AsyncClient(timeout=180, trust_env=False) as client:
         response = await client.post(f"{settings.openai_base_url}/chat/completions", json=payload, headers=headers)
